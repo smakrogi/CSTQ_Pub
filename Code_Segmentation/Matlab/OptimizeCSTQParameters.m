@@ -10,7 +10,9 @@ function [x_opt, max_opt] = OptimizeCSTQParameters(data_nb, work_folder, dataset
         local_params = parameters;
         local_params.CLAHE_clip_lim = x(1);
         local_params.TS_Ratio = x(2);
-        local_params.cdfAreaThreshold = x(3);
+        local_params.ST_Diff_Iter = x(3);
+        local_params.ParzenSigma = x(4);
+        local_params.LS_Iter = x(5);
 
         [~, ~, mean_Jaccard, ~] = ...
             Cell_Segmentation_All_Frames(data_nb, work_folder,...
@@ -23,7 +25,9 @@ function [x_opt, max_opt] = OptimizeCSTQParameters(data_nb, work_folder, dataset
         local_params = parameters;
         local_params.CLAHE_clip_lim = x.clahe_clip_lim;
         local_params.TS_Ratio = x.ts_ratio;
+        local_params.ST_Diff_Iter = x.st_diff_iter;
         local_params.ParzenSigma = x.parzen_sigma;
+        local_params.LS_Iter = x.ls_iter;
 
         [~, ~, mean_Jaccard, ~] = ...
             Cell_Segmentation_All_Frames(data_nb, work_folder,...
@@ -43,7 +47,8 @@ solver_method = 'bayes';
 % LS_Iter 
 
 % Set params to be tuned.
-x0 = [parameters.CLAHE_clip_lim, parameters.TS_Ratio, parameters.ParzenSigma];
+x0 = [parameters.CLAHE_clip_lim, parameters.TS_Ratio, parameters.ST_Diff_Iter, ...
+    parameters.ParzenSigma, parameters.LS_Iter];
 
 % Optimize ACC using BBLL threshold.
 switch solver_method
@@ -62,8 +67,10 @@ switch solver_method
         myoptOptions = optimoptions('fmincon', 'FiniteDifferenceType', 'central', 'DiffMinChange', 5e-8, ...
             'DiffMaxChange', 0.1, 'Display', 'iter', 'PlotFcns', @optimplotfval);
         [x_opt, score_opt] = fmincon(@RBDMObjectiveFunction, x0, [], [], [], [], ...
-        [parameters.detection_margin_range(1), parameters.meanShiftBandWidth_range(1), parameters.cdfAreaThreshold_range(1)], ...
-            [parameters.detection_margin_range(2), parameters.meanShiftBandWidth_range(2), parameters.cdfAreaThreshold_range(2)], ...
+        [parameters.CLAHE_clip_lim_range(1), parameters.TS_Ratio_range(1), parameters.ST_Diff_Iter_range(1), ...
+        parameters.ParzenSigma_range(1), parameters.LS_Iter_range(1)], ...
+            [parameters.CLAHE_clip_lim_range(2), parameters.TS_Ratio_range(2), parameters.ST_Diff_Iter_range(2), ...
+            parameters.ParzenSigma_range(2), parameters.LS_Iter_range(2)], ...
             [], myoptOptions);
     case 'simplex'
         % Non-derivative-based.
@@ -80,14 +87,21 @@ switch solver_method
         ts_ratio = optimizableVariable('ts_ratio',...
             [parameters.TS_Ratio_range(1),parameters.TS_Ratio_range(2)], 'Type', 'integer');
         
+        st_diff_iter = optimizableVariable('st_diff_iter',...
+            [parameters.ST_Diff_Iter_range(1),parameters.ST_Diff_Iter_range(2)], 'Type', 'integer');
+
         parzen_sigma = optimizableVariable('parzen_sigma', ...
             [parameters.ParzenSigma_range(1),parameters.ParzenSigma_range(2)], ...
             'Type', 'integer');
+
+        ls_iter = optimizableVariable('ls_iter',...
+            [parameters.LS_Iter_range(1),parameters.LS_Iter_range(2)], 'Type', 'integer');
         
-        results = bayesopt(@RBDMObjectiveFunctionBayes, [clahe_clip_lim, ts_ratio, parzen_sigma], 'Verbose', 1, ...
-             'IsObjectiveDeterministic', true, 'AcquisitionFunctionName','expected-improvement-plus', ...
+        results = bayesopt(@RBDMObjectiveFunctionBayes, [clahe_clip_lim, ts_ratio, st_diff_iter, parzen_sigma, ls_iter], ...
+            'Verbose', 1, 'IsObjectiveDeterministic', true, 'AcquisitionFunctionName','expected-improvement-plus', ...
              'UseParallel', true, 'MaxObjectiveEvaluations', 100, 'InitialX', ...
-             table(parameters.CLAHE_clip_lim, parameters.TS_Ratio, parameters.ParzenSigma));
+             table(parameters.CLAHE_clip_lim, parameters.TS_Ratio, parameters.ST_Diff_Iter, ...
+             parameters.ParzenSigma, parameters.LS_Iter));
         
         output_table = results.XTrace;
         score_opt = results.ObjectiveTrace;
@@ -99,7 +113,13 @@ switch solver_method
         opt_table = addvars(opt_table, score_opt);
         
         output_table =[output_table; opt_table];
-        dataset_name = strrep(dataset_name,'/','_');
+        if ismac || isunix
+            dataset_name = strrep(dataset_name,'/','_');
+        elseif ispc
+            dataset_name = strrep(dataset_name,'\','_');
+        else
+            disp('Platform not supported')
+        end
         writetable(output_table, ['Optim_X_F_', dataset_name, '.csv'])
 end
 

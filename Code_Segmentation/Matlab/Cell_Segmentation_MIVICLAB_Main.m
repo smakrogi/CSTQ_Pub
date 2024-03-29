@@ -1,5 +1,5 @@
 function Segmentation_Results_Cell = Cell_Segmentation_MIVICLAB_Main(workFolder, ...
-    dataset_name, Param_Excel_Path, varargin)
+    dataset_name, param_excel_path, varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   Main function for live cell segmentation in an image sequence.     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -17,7 +17,8 @@ function Segmentation_Results_Cell = Cell_Segmentation_MIVICLAB_Main(workFolder,
 % If number of parameters is equal to 3, use spreadsheet params. Otherwise,
 % use params passed from auto-tuning.
 if nargin == 3
-    [~, ~, DatasetExcelNames] = xlsread(Param_Excel_Path, 1, 'A2:A27');
+    Parameter_Table = readtable(param_excel_path,'VariableNamingRule','preserve');
+    DatasetExcelNames = Parameter_Table.Dataset_Name(1:26);
 elseif nargin == 4
 else
     error('Incorrect number of input arguments. Exiting.');
@@ -49,13 +50,25 @@ else
 end
 
 if nargin == 3
-    Params = Get_All_Parameters(Param_Excel_Path, data_nb);
+    Params = Get_All_Parameters(param_excel_path, data_nb);
 elseif nargin == 4
     Params=varargin{1};
 else
     error('Incorrect number of input arguments. Exiting.');
 end
 
+if ismac
+    Params.binary_folder = '~/Documents/Codes/gitrepos/Cell_Segm_Track_Quant_MIVIC/Code_CTC/Mac';
+elseif isunix
+    Params.binary_folder = '~/Documents/Codes/gitrepos/Cell_Segm_Track_Quant_MIVIC/Code_CTC/Linux';
+elseif ispc
+    % Code to run on Windows platform
+    user_folder = getenv('USERPROFILE');
+    Params.binary_folder = fullfile(user_folder, 'Documents','Codes','src','gitrepos','Cell_Segm_Track_Quant_MIVIC', ...
+        'Code_CTC', 'Win');
+else
+    error('Platform not supported. Exiting.');
+end
 
 All_Noise_Filter_Types = {'median_filtering_only' , 'median_filtering_and_BM3D', 'BM3D_only', 'autoencoder'};
 Params.noise_filter_type = All_Noise_Filter_Types{Params.Noise_Filter_Type};
@@ -80,7 +93,7 @@ All_Wat_Input_Types = {'diff_frame_and_edge_min','diff_frame_and_feat_map_max',.
 Params.water_seg_input = All_Wat_Input_Types{Params.WSEG_ID};
 
 % Auxilliary parameter settings.
-Params.binary_folder = '~/Documents/Codes/gitrepos/Cell_Segm_Track_Quant_MIVIC/Code_CTC/Mac';
+Params.compute_seg_measure  = false;
 Params.display              = true;  % create figures or not.
 Params.thresh_solidity      = 0.9; % 0.8926;   %SIM04  thres =0.8926 smallest other .95, 0.9 for Hela2
 Params.hist_train_nb_frames = 10;
@@ -95,15 +108,19 @@ if Params.tuning == true
 
     % Perform optimization.
     Params.CLAHE_clip_lim_range = [1e-4, 0.75];
-    Params.TS_Ratio_range = [1, 100];
-    Params.ParzenSigma_range = [2, 40];
+    Params.TS_Ratio_range = [1, 150];
+    Params.ST_Diff_Iter_range = [10, 70];
+    Params.ParzenSigma_range = [2, 80];
+    Params.LS_Iter_range = [0, 100];
 
     x_opt = OptimizeCSTQParameters(data_nb, workFolder, ...
         dataset_name, Params);
 
     Params.CLAHE_clip_lim = x_opt(1);
     Params.TS_Ratio = x_opt(2);
-    Params.ParzenSigma = x_opt(3);
+    Params.ST_Diff_Iter = x_opt(3);
+    Params.ParzenSigma = x_opt(4);
+    Params.LS_Iter = x_opt(5);
 
     Segmentation_Results_Cell = ...
         Cell_Segmentation_All_Frames(data_nb, workFolder,...

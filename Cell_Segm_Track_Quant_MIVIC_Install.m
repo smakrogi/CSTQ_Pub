@@ -16,6 +16,7 @@ addpath(fullfile(directory_name, 'Code_CTC','Win'));
 addpath(fullfile(directory_name, 'Code_Main', 'Matlab'));
 addpath(fullfile(directory_name, 'Code_Segmentation', 'Matlab'));
 addpath(fullfile(directory_name, 'Code_Segmentation', 'Matlab', 'bm3d_matlab_package'));
+addpath(fullfile(directory_name, 'Code_Segmentation', 'Matlab', 'bm3d_matlab_package', 'bm3d'));
 addpath(fullfile(directory_name, 'Code_Segmentation', 'Matlab', 'levelset_seg_biasCorr_v1'));
 addpath(fullfile(directory_name, 'Code_Tracking', 'Matlab'));
 addpath(fullfile(directory_name, 'Code_Tracking', 'Matlab', 'OpticalFlowCeLiu'));

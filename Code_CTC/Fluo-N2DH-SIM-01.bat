@@ -4,6 +4,6 @@ REM Cell_Segmentation_MIVICLAB_Main.exe root_folder input_sequence parameter_fil
 REM Cell_Tracking_MIVICLAB_Main.exe root_folder input_sequence
 REM Prerequisities: MATLAB 2021a (x64), Python 3.8
 
-Cell_Segmentation_MIVICLAB_Main.exe ..\ Fluo-N2DH-SIM\01 Challenge_Parameters.xlsx
+Cell_Segmentation_MIVICLAB_Main.exe ..\ Fluo-N2DH-SIM\01 Challenge_Parameters.csv
 
 Cell_Tracking_MIVICLAB_Main.exe ..\ Fluo-N2DH-SIM\01

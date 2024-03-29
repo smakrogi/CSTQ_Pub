@@ -18,7 +18,8 @@ tStart = tic;
 % Denoising net.
 switch Params.noise_filter_type
     case 'autoencoder'
-        denoise_net = denoisingNetwork('DnCNN');
+        data = load('defaultDnCNN-B-Grayscale.mat');    
+        denoise_net = data.net;
     otherwise
         denoise_net = [];
 end
@@ -119,7 +120,12 @@ for k = 1:nb_frames
     %% Post-processing.
     
     % Hole filling.
-    Seg_Mask = imfill(Seg_Mask, 8, 'holes');
+    switch data_nb
+        case 20 % Fluo-C2DL-Huh7 02
+            % Do nothing.
+        otherwise
+            Seg_Mask = imfill(Seg_Mask, 8, 'holes');
+    end
     Seg_Mask = imresize(Seg_Mask, [size(Train_Data{k},1),size(Train_Data{k},2)],'nearest');
 
     % Remove small regions.
@@ -130,6 +136,13 @@ for k = 1:nb_frames
     % Cell cluster separation.
     fprintf('Cell cluster separation\n');
     Seg_Mask = Detect_And_Separate_Cell_Clusters(Train_Data{k}, Seg_Mask, Params);
+    
+   % Apply convex hull.
+    switch data_nb
+        case 14 % Fluo-N2DH-SIM+02
+        fprintf('Convex hull operation\n');
+        Seg_Mask = bwconvhull(Seg_Mask,'objects',4);
+    end
     
 %     % Clear image border.
 %     Seg_Mask = imclearborder(Seg_Mask, 4);
@@ -145,29 +158,27 @@ for k = 1:nb_frames
     
     
     % Compute DSC and Jaccard Index if reference image exists.
-    if (marker<=numel(Numero_Ref))
-        % If there is a reference mask.
-        if sum( Numero_Ref == Numero_Train(k) ) ~= 0
-            match_idx = Numero_Ref == Numero_Train(k);
-            Dice_Res(k,1)   = Get_Dice(Seg_Mask, Reference_Data{match_idx});
-            Jaccard_Res(k,1)= Get_Jaccard(Seg_Mask, Reference_Data{match_idx});
-            total_Dice      = total_Dice + Dice_Res(k);
-            total_Jaccard   = total_Jaccard + Jaccard_Res(k,1);
-            iterations(k,1) = iter_to_converge;
-            fprintf('DSC: %.3f\tJaccard: %.3f\n', Dice_Res(k,1), Jaccard_Res(k,1));
-            % Display reference mask.
-            if Params.display
-                figure(1); subplottight(3,4,10);
-                %   imagesc(Train_Data{k}); hold on;
-                %   visboundaries(bwboundaries(Reference_Data{marker}));
-                imagesc(labeloverlay(Current_Frame_Scaled/max(Current_Frame_Scaled(:)),boundarymask(Reference_Data{match_idx}), ...
-                    'Transparency', 0, 'IncludedLabels', 1, 'Colormap', 'hot')); axis image;
-                title(['Frame #', num2str(k), '/', num2str(nb_frames),  ...
-                    ', Reference Mask']);
-                drawnow;
-            end
-            marker          = marker + 1;
+    % If there is a reference mask.
+    if (marker<=numel(Numero_Ref) && sum( Numero_Ref == Numero_Train(k) ) ~= 0)
+        match_idx = Numero_Ref == Numero_Train(k);
+        Dice_Res(k,1)   = Get_Dice(Seg_Mask, Reference_Data{match_idx});
+        Jaccard_Res(k,1)= Get_Jaccard(Seg_Mask, Reference_Data{match_idx});
+        total_Dice      = total_Dice + Dice_Res(k);
+        total_Jaccard   = total_Jaccard + Jaccard_Res(k,1);
+        iterations(k,1) = iter_to_converge;
+        fprintf('DSC: %.3f\tJaccard: %.3f\n', Dice_Res(k,1), Jaccard_Res(k,1));
+        % Display reference mask.
+        if Params.display
+            figure(1); subplottight(3,4,10);
+            %   imagesc(Train_Data{k}); hold on;
+            %   visboundaries(bwboundaries(Reference_Data{marker}));
+            imagesc(labeloverlay(Current_Frame_Scaled/max(Current_Frame_Scaled(:)),boundarymask(Reference_Data{match_idx}), ...
+                'Transparency', 0, 'IncludedLabels', 1, 'Colormap', 'hot')); axis image;
+            title(['Frame #', num2str(k), '/', num2str(nb_frames),  ...
+                ', Reference Mask']);
+            drawnow;
         end
+        marker          = marker + 1;
     end
     
     
@@ -185,8 +196,7 @@ fprintf(infoString);
 
 
 %% Performance evaluation.
-% mean DICE of segmentation performance of watershed segmentation of parzen edges of
-% filtered diffused frame combined with Chan Vese and temporal linking
+% mean DICE of segmentation performance. 
 mean_Dice  = total_Dice/(marker - 1);
 mean_Jaccard = total_Jaccard/(marker - 1);
 header     = {'ST_Diff_TCV-DSC' 'ST_Diff_TCV-Jaccard' 'Nb iterations' };
@@ -223,16 +233,23 @@ if Params.display
     saveas(gcf,fig_name);
 end
 
-% Calculate SEG measure.
-measure_type = 'SEGMeasure ';
-data_string = split(dataset_name, '/');
-command_string = [fullfile(Params.binary_folder, measure_type), [ ], ...
-    fullfile(workFolder, data_string{1}), ' ', data_string{2}, ' 3'];
-fprintf([command_string,'\n']);
-[~,cmdout] = system(command_string);
-fprintf(cmdout);
-cmdout = erase(cmdout, newline);
-seg_measure_string = extractAfter(cmdout, 'measure: ');
-seg_measure = str2double(seg_measure_string);
-
+% Calculate SEG measure if there is reference data and we want to compute SEG.
+if marker > 1 && Params.compute_seg_measure 
+    measure_type = 'SEGMeasure ';
+    if ismac || isunix
+        data_string = split(dataset_name, '/');
+    elseif ispc
+        data_string = split(dataset_name, '\');
+    end
+    command_string = [fullfile(Params.binary_folder, measure_type), [ ], ...
+        fullfile(workFolder, data_string{1}), ' ', data_string{2}, ' 3'];
+    fprintf([command_string,'\n']);
+    [~,cmdout] = system(command_string);
+    fprintf(cmdout);
+    cmdout = erase(cmdout, newline);
+    seg_measure_string = extractAfter(cmdout, 'measure: ');
+    seg_measure = str2double(seg_measure_string);
+else
+    seg_measure = [];
+end
 end

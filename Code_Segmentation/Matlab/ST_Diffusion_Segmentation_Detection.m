@@ -71,8 +71,9 @@ switch Params.fgnd_bgnd_method
         foreground_region_ids = StatisticalModelAndDecision(Joint_Measure, ...
             Params.CDF_Thres, Params);
     case{'classifier'}
-        classifier_filename = strcat('fb_classifier.mat');
-        classifier_model = matlab.lang.makeValidName(strcat('fb_model_',Nom));
+        classifier_filename = 'fb_classifier.mat';
+        classifier_model = strcat('fb_model_',Nom);
+        classifier_model = matlab.lang.makeValidName(classifier_model);
         load(classifier_filename, 'classifier_struct');
         foreground_region_ids = ClassifierDecision(Joint_Measure, ...
             classifier_struct.(classifier_model), Params);
@@ -100,3 +101,18 @@ if Params.display
 end
 
 end
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function classifier_struct = Read_Classifier_Struct(filename)
+
+% Read-in the text model description.
+text = fileread(filename);
+
+% Use json to decode the model.
+classifier_struct = jsondecode(text);
+
+end
+
+

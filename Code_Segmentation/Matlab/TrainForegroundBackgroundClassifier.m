@@ -106,3 +106,17 @@ Balanced_Joint_Measure(id_remove,:) = [];
 balanced_labels(id_remove) = [];
 
 end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Write_Classifier_Struct(classifier_struct, classifier_filename)
+
+% Use json encoding to produce the text description.
+text = jsonencode(classifier_struct, PrettyPrint=true);
+
+% Write text description to file.
+file_id = fopen([classifier_filename,'txt'],'w');
+nbytes = fprintf(file_id, text);
+fclose(file_id);
+
+end

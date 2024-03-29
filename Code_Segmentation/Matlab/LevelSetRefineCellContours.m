@@ -4,6 +4,7 @@ function [seg,lev_set,next_seg,iter_to_converge] = ...
 % S. Makrogiannis, MIVIC, PEMACS, DESU <smakrogiannis@desu.edu>
 
 lse_bfe_nscales = 1;
+scale_exp_factor = -1;
 
 % Check if user chooses to skip this step.
 if Params.LS_Iter == 0
@@ -45,8 +46,8 @@ if Params.preproc_ls
             % De-noising (useful, before computing derivatives).
 %             InputImage = medfilt2(InputImage);
 %             InputImage=histeq(uint8(InputImage));
-            InputImage = adapthisteq(uint8(InputImage),'NumTiles',[4 4],'ClipLimit',0.04);
-            InputImage = gnldf(double(InputImage),50,0.25,'wregion'); %'sigmoid');  %'wregion');
+            InputImage = adapthisteq(uint8(InputImage),'NumTiles',[4 4],'ClipLimit',0.02);
+%             InputImage = gnldf(double(InputImage),5,0.2,'wregion'); %'sigmoid');  %'wregion');
         case 8    % MSC2
             % De-noising (useful, before computing derivatives).
 %            InputImage = medfilt2(InputImage);
@@ -62,47 +63,60 @@ if Params.preproc_ls
 %            InputImage = adapthisteq(uint8(InputImage),'NumTiles',[8 8],'ClipLimit',0.025);
 %            InputImage = gnldf(double(InputImage),50,0.25,'wregion');
         case 11   % GOWT01/1
-            %         I        = imadjust(uint8(I));
-%            InputImage = adapthisteq(uint8(InputImage),'NumTiles',[8 8],'ClipLimit',0.025);
-%            InputImage = gnldf(double(InputImage),50,0.25,'sigmoid');
+%             I        = imadjust(uint8(I));
+            InputImage = adapthisteq(uint8(InputImage),'NumTiles',[16 16],'ClipLimit',0.02);
+%             InputImage = gnldf(double(InputImage),50,0.25,'sigmoid');
 %             PSD = 0.1;
 %             InputImage = BM3D_Denoising(InputImage,PSD);
+            scale_exp_factor = -1;
         case 12   % GOWT01/2
-%            InputImage=histeq(uint8(InputImage));
-            PSD = 0.1;
-            InputImage = BM3D_Denoising(InputImage,PSD);  
-        case {13,14} % Fluo-N2DH-SIM+ 01,02
+            InputImage = adapthisteq(uint8(InputImage),'NumTiles',[4 4],'ClipLimit',0.01);
+%            InputImage = histeq(uint8(InputImage));
+%             PSD = 0.1;
+%             InputImage = BM3D_Denoising(InputImage,PSD);  
+            InputImage = gnldf(double(InputImage),20,0.2,'wregion'); %'sigmoid');  %'wregion');
+            scale_exp_factor = -1;
+        case 13 % Fluo-N2DH-SIM+ 01
+%             se_size = 10;
+%             InputImage = morphological_flattening(uint8(InputImage), se_size);
+%             lse_bfe_nscales = 2;
+%             scale_exp_factor = 0;
+        case 14 % Fluo-N2DH-SIM+ 02
             se_size = 10;
-            InputImage = morphological_flattening(uint8(InputImage), se_size);
+%             InputImage = imhmax(InputImage,10);
+%             InputImage = medfilt2(InputImage, [5, 5]);
+%             InputImage = imfill(uint8(InputImage));
+            InputImage = closing_by_reconstruction(uint8(InputImage), se_size);
         case {15,16} % PhC-C2DH-U373 01,02
 %             se_size = 10;
 %             InputImage = morphological_flattening(uint8(InputImage), se_size);
         case {17,18} % PhC-C2DL-PSC 01,02
 %             se_size = 10;
 %             InputImage = morphological_flattening(uint8(InputImage), se_size);
+            scale_exp_factor = 0;
         case {19,20} % Fluo-C2DL-Huh7 01,02
 %             se_size = 10;
 %             InputImage = morphological_flattening(uint8(InputImage), se_size);
         case {21,22} % DIC-C2DH-HeLa 01,02
             mean_intensity = mean(InputImage(:));
             InputImage = abs(InputImage - mean_intensity);
-        otherwise   % all other sequences
-            switch Params.noise_filter_type
-                case 'median_filtering_only'
-                    %         fprintf('Median filter denoising\n');
-                    %         InputImage = medfilt2(InputImage);
-                    %         I =imadjust(I);
-                    %         InputImage = morphological_flattening(InputImage);
-                    %         InputImage = adapthisteq(uint8(InputImage),'NumTiles',[8 8],'ClipLimit',0.025);
-                    %         InputImage = gnldf(double(InputImage),20,0.25,'wregion');
-                case {'median_filtering_and_BM3D','BM3D_only'}
-                    PSD = 0.1;
-                    InputImage = BM3D_Denoising(InputImage,PSD);
-                case 'autoencoder'
-                    % Denoising autoencoder.
-%                     InputImage = denoiseImage(uint8(InputImage),denoise_net);
-%                     InputImage = double(InputImage);
-            end                  
+%         otherwise   % all other sequences
+%             switch Params.noise_filter_type
+%                 case 'median_filtering_only'
+%                     %         fprintf('Median filter denoising\n');
+%                     %         InputImage = medfilt2(InputImage);
+%                     %         I =imadjust(I);
+%                     %         InputImage = morphological_flattening(InputImage);
+%                     %         InputImage = adapthisteq(uint8(InputImage),'NumTiles',[8 8],'ClipLimit',0.025);
+%                     %         InputImage = gnldf(double(InputImage),20,0.25,'wregion');
+%                 case {'median_filtering_and_BM3D','BM3D_only'}
+% %                     PSD = 0.1;
+% %                     InputImage = BM3D_Denoising(InputImage,PSD);
+%                 case 'autoencoder'
+%                     % Denoising autoencoder.
+% %                     InputImage = denoiseImage(uint8(InputImage),denoise_net);
+% %                     InputImage = double(InputImage);
+%             end                  
     end
 end
 
@@ -117,7 +131,7 @@ switch Params.level_set_type
         Params.LS_Iter = round(Params.LS_Iter/lse_bfe_nscales);
         ST_Prev_Seg_Grid = ST_Prev_Seg;
         for ii=1:lse_bfe_nscales
-            downsample_factor = 2^(-lse_bfe_nscales+ii-1); % {2^(-lse_bfe_nscales+ii),2^(-lse_bfe_nscales+ii-1)}
+            downsample_factor = 2^(-lse_bfe_nscales + ii + scale_exp_factor);
             InputImageGrid = imresize(InputImage, downsample_factor);
             ST_Prev_Seg_Grid = imresize(ST_Prev_Seg_Grid, size(InputImageGrid), 'nearest');
             [ST_Prev_Seg_Grid,lev_set,iter_to_converge] = ...
@@ -133,6 +147,9 @@ end
 %         seg      = imfill(seg, 'holes');
 %     case {9,10,11,12}    % Hela1
 %         seg=imfill(seg, 'holes');
+%     case 7 %Fluo MSC 01
+%         % Clear image border.
+%         seg = imclearborder(seg, 4);
 %     otherwise   % all other sequences
 %         %         SE=ones(3,3);
 %         %         seg=imerode(seg,SE);

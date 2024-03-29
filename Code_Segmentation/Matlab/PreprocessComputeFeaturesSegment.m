@@ -17,7 +17,6 @@ if (train_frame_index == 1 && frame_index + nb_train_images <= nb_all_images)
     %         Params);
     %     BackgndImageScaled = Histogram_Transform(BackgndImage,BackgndImage,BackgndImage,Iref,Itest_Background,Global_Max,...
     %         Global_Min,Local_Min_Background);
-    % To Do: try SVD for F/B separation.
 end
 
 

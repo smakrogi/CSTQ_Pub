@@ -22,24 +22,23 @@ else
 end
 
 work_folder = fullfile(user_folder,'Documents','Data','Cell_Tracking_Challenge',...
-    'Training');
-param_excel_path = 'Parameters.xlsx';          % on current folder
+    'Challenge');
+param_excel_path = 'Challenge_Parameters.csv';          % on current folder
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[~, ~, DatasetNames] = xlsread(param_excel_path, 1, 'A2:A27');
-if ismac
-    DatasetNames = strrep(DatasetNames,'\','/');
-elseif isunix
-    DatasetNames = strrep(DatasetNames,'\','/');
+Parameter_Table = readtable(param_excel_path,'VariableNamingRule','preserve');
+Dataset_Names = Parameter_Table.Dataset_Name(1:26);
+if ismac || isunix
+    Dataset_Names = strrep(Dataset_Names,'\','/');
 elseif ispc
     % Code to run on Windows platform
 else
     disp('Platform not supported')
 end
 
-data_nb           = menu('Dataset name:', DatasetNames);
+data_nb           = menu('Dataset name:', Dataset_Names);
 
-dataset_name      = DatasetNames{data_nb};   % SIM1(1)   MSC1(7)  GOWT1(11)  Hela1(9)
+dataset_name      = Dataset_Names{data_nb};   % SIM1(1)   MSC1(7)  GOWT1(11)  Hela1(9)
 
 % Call segmentation.
 Segmentation_Results_Cell = Cell_Segmentation_MIVICLAB_Main(work_folder, ...

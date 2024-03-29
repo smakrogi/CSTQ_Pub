@@ -26,11 +26,21 @@ end
 % work_folder = fullfile(user_folder,'OneDrive - Delaware State University','Documents','Data','Cell_Tracking_Challenge',...
 %     'Training');
 
-param_excel_path = 'Parameters.xlsx';          % on current folder
-[~, ~, DatasetNames] = xlsread(param_excel_path, 1, 'A2:A28');
+param_excel_path = 'Parameters.csv';          % on current folder
+Parameter_Table = readtable(param_excel_path,'VariableNamingRule','preserve');
+Dataset_Names = Parameter_Table.Dataset_Name(1:26);
+%[~, ~, DatasetNames] = xlsread(param_excel_path, 1, 'A2:A28');
 
-data_nb           = menu('Dataset name:', DatasetNames);
-dataset_name      = DatasetNames{data_nb};   % SIM1(1)   MSC1(7)  GOWT1(11)  Hela1(9)
+if ismac || isunix
+    Dataset_Names = strrep(Dataset_Names,'\','/');
+elseif ispc
+    % Code to run on Windows platform
+else
+    disp('Platform not supported')
+end
+
+data_nb           = menu('Dataset name:', Dataset_Names);
+dataset_name      = Dataset_Names{data_nb};   % SIM1(1)   MSC1(7)  GOWT1(11)  Hela1(9)
 sequence_name     = strcat(dataset_name(1:end-3),dataset_name(end-1:end));
 
 pixel_resolutions = [0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.397, 0.397, 0.644, 0.644, 0.24, 0.24, 0.125, 0.125, 0.65, 0.65, 1.6, 1.6, 0.65, 0.65, 0.19, 0.19, 0.645, 0.645, 0.645, 0.645, 0.665];

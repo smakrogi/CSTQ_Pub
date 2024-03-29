@@ -17,21 +17,19 @@ work_folder = fullfile(user_folder,'Documents','Data','Cell_Tracking_Challenge',
     'Challenge');
 param_excel_path = 'Challenge_Parameters.xlsx';          % on current folder
 
-% DatasetNames      = Data_Names; % For now we have SIM04= 4 and Hela2 =10
-[~, ~, DatasetNames] = xlsread(param_excel_path, 1, 'A2:A27');
+Parameter_Table = readtable(param_excel_path,'VariableNamingRule','preserve');
+Dataset_Names = Parameter_Table.Dataset_Name(1:26);
 
-if ismac
-    DatasetNames = strrep(DatasetNames,'\','/');
-elseif isunix
-    DatasetNames = strrep(DatasetNames,'\','/');
+if ismac || isunix
+    Dataset_Names = strrep(Dataset_Names,'\','/');
 elseif ispc
     % Code to run on Windows platform
 else
     disp('Platform not supported')
 end
 
-for Data_Nb=7:length(DatasetNames)-4
-    dataset_name = DatasetNames{Data_Nb};   % SIM1(1)   MSC1(7)  GOWT1(11)  Hela1(9)
+for Data_Nb=[7:10, 13:18, 21:22]
+    dataset_name = Dataset_Names{Data_Nb};   % SIM1(1)   MSC1(7)  GOWT1(11)  Hela1(9)
     
 	% Call cell segmentation.
 	Segmentation_Results_Cell = Cell_Segmentation_MIVICLAB_Main(work_folder, ...

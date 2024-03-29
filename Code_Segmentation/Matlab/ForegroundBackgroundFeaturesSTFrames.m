@@ -18,12 +18,11 @@ header = {'Area', 'Motion_Activ','Motion_Field_Mag','Diffused_Int','ST_Gradient_
     'label'};
 
 Params.display = false;
-ref_count = 1;
 
-for frame_index = 1:nb_frames
-    % Compute DSC and Jaccard Index if reference image exists.
-    if (ref_count<=numel(ref_idx) && train_idx(frame_index) == ref_idx(ref_count))
+for frame_index = 1:4:nb_frames
+    if (sum(train_idx(frame_index) == ref_idx) ~= 0)
         % If there is a reference mask.
+        match_idx = train_idx(frame_index) == ref_idx;
         fprintf('\nFrame # %d / %d\n', frame_index, nb_frames);
 
         local_index = mod(frame_index, Params.hist_train_nb_frames);
@@ -41,7 +40,7 @@ for frame_index = 1:nb_frames
         end
 
         Joint_Measure = ...
-            ComputeRegionFeatures(frame_index, ref_count, Reference_Data, FeatureMap, Displacement_Field_Mag, ...
+            ComputeRegionFeatures(frame_index, match_idx, Reference_Data, FeatureMap, Displacement_Field_Mag, ...
             DiffusedFrame, SpatioTemporalGradientMap, SpatioTemporalWatershedMap);
 
         if frame_index == 1
@@ -49,7 +48,6 @@ for frame_index = 1:nb_frames
         else
             writematrix(Joint_Measure, csv_name_ST, 'WriteMode', 'append');
         end
-        ref_count = ref_count + 1;
     end
 end
 
